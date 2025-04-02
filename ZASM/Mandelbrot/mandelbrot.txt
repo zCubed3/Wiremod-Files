@@ -1,0 +1,129 @@
+// Set our color mode to 1 (unpacked RGB)
+MOV [65536+1048569], 1
+
+// Write a test pixel
+MOV [65536], 255
+MOV [65536+1], 255
+MOV [65536+2], 255
+
+// Reset our registers
+XOR EAX, EAX
+XOR EBX, EBX
+
+// Our constants
+IMAX: 64
+
+// EAX = X
+// EBX = Y
+
+// Our mandlebrot blit loop
+BLIT:
+    // Mandlebrot iteration
+    PUSH EAX
+    PUSH EBX
+    
+    // Calculates our U coordinate
+    DIV EAX, [65536+1048572]
+    MUL EAX, 2
+    SUB EAX, 1
+    
+    // Calculates our V coordinates
+    DIV EBX, [65536+1048573]
+    MUL EBX, 2
+    SUB EBX, 1
+    
+    // Zoom
+    MUL EAX, 2.0
+    MUL EBX, 2.0
+    
+    XOR ESI, ESI
+    XOR EDI, EDI
+    XOR EBP, EBP
+    
+    MANDLEBROT:
+        // Calculate IX (but don't write it)
+        XOR R0, R0
+        XOR R1, R1
+        XOR R2, R2
+        XOR R3, R3
+        
+        MOV R0, ESI
+        MUL R0, R0
+        
+        MOV R1, EDI
+        MUL R1, R1
+        
+        XOR R2, R2
+        MOV R2, R0
+        ADD R2, EAX
+        SUB R2, R1
+    
+        MOV R3, R2
+    
+        // Calculate IY
+        XOR R0, R0
+        
+        MOV R0, ESI
+        MUL R0, 2.0
+        MUL R0, EDI
+        ADD R0, EBX
+        
+        MOV EDI, R0
+        
+        // Write IX
+        MOV ESI, R3
+        
+        INC EBP
+        
+        // Have we iterated too far?
+        CMP EBP, 64
+        JGE FALLOUT
+        
+        // Check if we're on the surface
+        MOV R0, ESI
+        MUL R0, R0
+        
+        MOV R1, EDI
+        MUL R1, R1
+        
+        ADD R0, R1
+        CMP R0, 4.0
+        JLE MANDLEBROT
+        
+        FALLOUT:
+            NOP
+        
+    DIV EBP, 64
+    MUL EBP, 255
+        
+    POP EBX
+    POP EAX
+
+    // ECX stores our actual pixel index
+    XOR ECX, ECX
+    ADD ECX, EAX
+    
+    MOV EDX, EBX
+    MUL EDX, [65536+1048572]
+    ADD ECX, EDX
+    
+    MUL ECX, 3
+    
+    // Blit to the screen
+    MOV [65536:ECX], EBP
+    MOV [65537:ECX], EBP
+    MOV [65538:ECX], EBP
+    
+    INC EAX
+    CMP EAX, [65536+1048572]
+    JGE NEWLINE
+    JMP SKIP
+    
+    NEWLINE:
+        MOV EAX, 0
+        INC EBX
+    
+    SKIP:
+        JMP BLIT
+
+JMP BLIT
